@@ -33,7 +33,7 @@ RUN npm install --legacy-peer-deps \
  && npm run build:css
 
 # Adjust pathing to account for build inconsistencies when launching new trinkets
-RUN sed -i "s|trinketConfig.getUrl('/library/trinkets/create|'/library/trinkets/create|g" public/partials/directives/trinket.js
+RUN sed -i "s|trinketConfig.getUrl('/library/trinkets/create?lang=' + lang)|'/library/trinkets/create?lang=' + lang|g" public/partials/directives/trinket.js
 
 
 ARG COMMIT_ID
