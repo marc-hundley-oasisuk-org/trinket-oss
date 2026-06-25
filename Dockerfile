@@ -28,8 +28,12 @@ RUN curl -L --silent -o ./public-components.tgz \
     && tar xzf public-components.tgz \
     && rm public-components.tgz
 
+# Build CSS elements to ensure correct rendering on modern browsers 
 RUN npm install --legacy-peer-deps \
  && npm run build:css
+
+# Adjust pathing to account for build inconsistencies when launching new trinkets
+RUN sed -i "s|trinketConfig.getUrl('/library/trinkets/create|'/library/trinkets/create|g" public/partials/directives/trinket.js
 
 
 ARG COMMIT_ID
