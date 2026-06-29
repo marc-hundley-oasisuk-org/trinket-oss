@@ -110,7 +110,10 @@ create_local_config() {
 # Redis is intentionally not configured.
 
 app:
-  url: "http://${VM_IP}:3000"
+  url:
+    hostname: ${VM_IP}
+    port: 3000
+    protocol: http
   basePath: "/"
 
   plugins:
@@ -118,25 +121,57 @@ app:
       cookieOptions:
         password: "${SESSION_SECRET}"
         isSecure: false
+  sitename: 'OCL Computer Science'
+  supportemail: 'servicedesk@oasisuk.org'
+  #logo: '/img/my-logo.png'
+  embed:
+    skulpt:
+      local: true
+      min: true
+
+db:
+  mongo:
+      host: 127.0.0.1
+      port: 27017
+      database: trinket
+
+  #Redis is optional - sessions work without it
+  redis:
+    enabled: false
 
 features:
   trinkets:
     python: true
     html: true
-    python3: true
+    python3: false
 
   assets: false
   courses: true
   accessibilityToggle: false
 
-db:
-  redis:
-    enabled: false
+cdn:
+  enabled: false
+
+assets:
+  useCDN: false
 
 queue:
   enabled: false
 
 exports:
+  enabled: false
+
+aws:
+  buckets:
+    cdn:
+      host: ''
+
+    vendorassets:
+      host: ''
+
+    skulpt:
+      host: ''
+
   enabled: false
 EOF
 
