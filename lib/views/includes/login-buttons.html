@@ -1,6 +1,21 @@
-{% if config.app.auth.google and config.app.auth.google.clientID %}
+{% set hasGoogleAuth = config.app.auth.google and config.app.auth.google.clientID %}
+{% set hasMicrosoftAuth = config.app.auth.microsoft and config.app.auth.microsoft.enabled and config.app.auth.microsoft.clientID %}
+
+{% if hasGoogleAuth or hasMicrosoftAuth %}
 <div class="row">
   <div class="small-12 columns text-center login-div">
+
+    {% if hasMicrosoftAuth %}
+    <a
+      class="login-button save-form button primary"
+      {% if not skipAuthInit %}data-auth-init="Microsoft"{% endif %}
+      href="/auth/microsoft{% if loginNext %}?next={{ loginNext }}{% endif %}"
+    >
+      Sign in with Microsoft
+    </a>
+    {% endif %}
+
+    {% if hasGoogleAuth %}
     <a
       class="login-button save-form"
       {% if not skipAuthInit %}data-auth-init="Google"{% endif %}
@@ -12,6 +27,8 @@
         alt="Sign In with Google" title="Sign In with Google"
       />
     </a>
+    {% endif %}
+
   </div>
 </div>
 <div class="row">

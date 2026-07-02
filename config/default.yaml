@@ -326,6 +326,15 @@ app:
       clientSecret:
       clientID:
       callbackURL:
+    microsoft:
+      enabled: false
+      tenantId: ''
+      clientID: ''
+      clientSecret: ''
+      callbackURL: ''
+      allowedDomains: []
+      autoCreateUsers: true
+
   serverside:
     # Maps trinket lang param to config key
     langmap:

@@ -544,6 +544,25 @@ routes = [
       auth : false
     }
   },
+  {
+    route : 'GET /auth/microsoft auth.microsoft',
+    config : {
+      auth : false
+    }
+  },
+  {
+    route : 'GET /auth/microsoft/callback auth.microsoftCallback',
+    cookie  : true,
+    success: {
+      redirect:  '{redirectTo}'
+    },
+    fail: {
+      redirect: '/login'
+    },
+    config : {
+      auth : false
+    }
+  },
 ];
 
 // trinket language specific routes
