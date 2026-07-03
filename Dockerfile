@@ -5,7 +5,7 @@ SHELL ["/bin/bash", "-c"]
 
 # Install build dependencies
 RUN apt-get update \
-    && apt-get install -y python3 build-essential \
+    && apt-get install -y python3 build-essential libcap2-bin\
     && apt-get -y autoclean
 
 # Install global tools
@@ -15,6 +15,9 @@ RUN groupadd -r trinket && \
     useradd -r -g trinket -m -c "trinket user" trinket
 
 RUN mkdir -p /usr/local/node/trinket && chown trinket:trinket /usr/local/node/trinket
+
+# Allow the non-root trinket user to bind to privileged ports such as 443
+RUN setcap 'cap_net_bind_service=+ep' "$(readlink -f "$(which node)")"
 
 USER trinket
 

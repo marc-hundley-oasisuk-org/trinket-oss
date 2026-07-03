@@ -288,6 +288,8 @@ services:
     image: trinket/app:latest
     container_name: trinket
     restart: unless-stopped
+    cap_add:
+      - NET_BIND_SERVICE
     network_mode: host
     depends_on:
       - mongodb
