@@ -65,7 +65,7 @@ const init = async () => {
     process.exit(1);
   }
   // Create server with Hapi 20+ configuration
-  const server = Hapi.server({
+  const serverOptions = {
     host: config.app.hostname || 'localhost',
     port: config.app.port || 3000,
     routes: {
@@ -84,7 +84,20 @@ const init = async () => {
         options: {}
       }
     }]
-  });
+  };
+
+  if (config.app.https && config.app.https.enabled) {
+    if (!config.app.https.keyPath || !config.app.https.certPath) {
+      throw new Error('HTTPS is enabled but keyPath or certPath is missing.');
+    }
+
+    serverOptions.tls = {
+      key: fs.readFileSync(config.app.https.keyPath),
+      cert: fs.readFileSync(config.app.https.certPath)
+    };
+  }
+
+  const server = Hapi.server(serverOptions);
 
   // Register plugins
   await server.register([

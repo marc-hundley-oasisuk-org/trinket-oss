@@ -107,6 +107,51 @@ create_local_config() {
   TRINKET_HOSTNAME="${TRINKET_HOSTNAME:-${VM_IP}}"
   TRINKET_PORT="${TRINKET_PORT:-3000}"
 
+  TRINKET_HTTPS_ENABLED="${TRINKET_HTTPS_ENABLED:-false}"
+  TRINKET_HTTPS_CERT_SOURCE="${TRINKET_HTTPS_CERT_SOURCE:-}"
+  TRINKET_HTTPS_KEY_SOURCE="${TRINKET_HTTPS_KEY_SOURCE:-}"
+  TRINKET_CERT_DIR="${INSTALL_DIR}/certs"
+  TRINKET_CONTAINER_CERT_PATH="/usr/local/node/trinket/certs/trinket.crt"
+  TRINKET_CONTAINER_KEY_PATH="/usr/local/node/trinket/certs/trinket.key"
+
+  if [ "${TRINKET_HTTPS_ENABLED}" = "true" ]; then
+    TRINKET_PROTOCOL="https"
+    mkdir -p "${TRINKET_CERT_DIR}"
+
+    if [ -n "${TRINKET_HTTPS_CERT_SOURCE}" ] && [ -n "${TRINKET_HTTPS_KEY_SOURCE}" ]; then
+      log "Copying provided HTTPS certificate and key"
+      cp "${TRINKET_HTTPS_CERT_SOURCE}" "${TRINKET_CERT_DIR}/trinket.crt"
+      cp "${TRINKET_HTTPS_KEY_SOURCE}" "${TRINKET_CERT_DIR}/trinket.key"
+    elif [ ! -f "${TRINKET_CERT_DIR}/trinket.crt" ] || [ ! -f "${TRINKET_CERT_DIR}/trinket.key" ]; then
+      log "Generating self-signed HTTPS certificate for ${TRINKET_HOSTNAME}"
+
+      if [[ "${TRINKET_HOSTNAME}" =~ ^[0-9]+\\.[0-9]+\\.[0-9]+\\.[0-9]+$ ]]; then
+        CERT_SAN="IP:${TRINKET_HOSTNAME}"
+      else
+        CERT_SAN="DNS:${TRINKET_HOSTNAME}"
+      fi
+
+      openssl req -x509 -nodes -days 365 \
+        -newkey rsa:2048 \
+        -keyout "${TRINKET_CERT_DIR}/trinket.key" \
+        -out "${TRINKET_CERT_DIR}/trinket.crt" \
+        -subj "/CN=${TRINKET_HOSTNAME}" \
+        -addext "subjectAltName=${CERT_SAN}"
+    fi
+
+    chmod 644 "${TRINKET_CERT_DIR}/trinket.key"
+    chmod 644 "${TRINKET_CERT_DIR}/trinket.crt"
+    chown -R root:root "${TRINKET_CERT_DIR}"
+
+    TRINKET_COOKIE_SECURE="true"
+    TRINKET_HTTPS_KEY_PATH="${TRINKET_CONTAINER_KEY_PATH}"
+    TRINKET_HTTPS_CERT_PATH="${TRINKET_CONTAINER_CERT_PATH}"
+  else
+    TRINKET_COOKIE_SECURE="false"
+    TRINKET_HTTPS_KEY_PATH=""
+    TRINKET_HTTPS_CERT_PATH=""
+  fi
+
   MICROSOFT_SSO_ENABLED="${MICROSOFT_SSO_ENABLED:-false}"
   MICROSOFT_TENANT_ID="${MICROSOFT_TENANT_ID:-}"
   MICROSOFT_CLIENT_ID="${MICROSOFT_CLIENT_ID:-}"
@@ -135,17 +180,24 @@ create_local_config() {
 # Redis is intentionally not configured.
 
 app:
+  hostname: 0.0.0.0
+  port: ${TRINKET_PORT}
   url:
     hostname: ${TRINKET_HOSTNAME}
     port: ${TRINKET_PORT}
     protocol: ${TRINKET_PROTOCOL}
   basePath: "/"
 
+  https:
+    enabled: ${TRINKET_HTTPS_ENABLED}
+    keyPath: '${TRINKET_HTTPS_KEY_PATH}'
+    certPath: '${TRINKET_HTTPS_CERT_PATH}'
+
   plugins:
     session:
       cookieOptions:
         password: "${SESSION_SECRET}"
-        isSecure: false
+        isSecure: ${TRINKET_COOKIE_SECURE}
   sitename: 'OCL Computer Science'
   supportemail: 'servicedesk@oasisuk.org'
   #logo: '/img/my-logo.png'
@@ -243,6 +295,7 @@ services:
       NODE_ENV: ""
     volumes:
       - ./config/local.yaml:/usr/local/node/trinket/config/local.yaml:ro
+      - ./certs:/usr/local/node/trinket/certs:ro
 
 volumes:
   mongodb_data:
@@ -286,11 +339,12 @@ validate_runtime() {
   docker logs trinket --tail=80 || true
 
   echo ""
-  echo "Testing local HTTP response from VM..."
+  TEST_URL="${TRINKET_PROTOCOL}://localhost:${TRINKET_PORT}"
+  echo "Testing local response from VM at ${TEST_URL}..."
 
   for i in $(seq 1 30); do
-    if curl -fsS --max-time 5 http://localhost:3000 >/tmp/trinket-http-test.html; then
-      echo "✅ Trinket responded successfully on http://localhost:3000"
+    if curl -k -fsS --max-time 5 "${TEST_URL}" >/tmp/trinket-http-test.html; then
+      echo "✅ Trinket responded successfully on ${TEST_URL}"
       return 0
     fi
 
@@ -321,10 +375,14 @@ print_summary() {
   echo "======================================="
   echo ""
   echo "Try from inside the VM:"
-  echo "  curl http://localhost:3000"
+  if [ "${TRINKET_PROTOCOL}" = "https" ]; then
+    echo "  curl -k https://localhost:${TRINKET_PORT}"
+  else
+    echo "  curl http://localhost:${TRINKET_PORT}"
+  fi
   echo ""
   echo "Try from the Hyper-V host browser:"
-  echo "  http://${VM_IP}:3000"
+  echo "  ${TRINKET_PROTOCOL}://${TRINKET_HOSTNAME}:${TRINKET_PORT}"
   echo ""
   echo "Useful commands:"
   echo "  cd ${INSTALL_DIR}"

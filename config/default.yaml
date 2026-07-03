@@ -30,6 +30,10 @@ app:
     protocol: https
     hostname: trinket.dev
     port:
+  https:
+    enabled: false
+    keyPath: ''
+    certPath: ''
   start: true
   usersubdomains: false
   templates: lib/views/
