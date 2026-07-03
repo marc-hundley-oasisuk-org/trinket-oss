@@ -152,40 +152,62 @@ prompt_for_configuration() {
   fi
 
   if [ "${MICROSOFT_SSO_ENABLED}" = "true" ]; then
-    if [ -z "${MICROSOFT_TENANT_ID:-}" ]; then
-      read -rp "Directory (Tenant) ID: " MICROSOFT_TENANT_ID
-    fi
+      if [ -z "${MICROSOFT_TENANT_ID:-}" ]; then
+        read -rp "Directory (Tenant) ID: " MICROSOFT_TENANT_ID
+      fi
 
-    if [ -z "${MICROSOFT_CLIENT_ID:-}" ]; then
-      read -rp "Application (Client) ID: " MICROSOFT_CLIENT_ID
-    fi
+      if [ -z "${MICROSOFT_TENANT_ID}" ]; then
+        echo "❌ Directory (Tenant) ID cannot be blank"
+        exit 1
+      fi
 
-    if [ -z "${MICROSOFT_CLIENT_SECRET:-}" ]; then
-      read -rsp "Client Secret: " MICROSOFT_CLIENT_SECRET
-      echo ""
-    fi
+      if [ -z "${MICROSOFT_CLIENT_ID:-}" ]; then
+        read -rp "Application (Client) ID: " MICROSOFT_CLIENT_ID
+      fi
 
-    if [ -z "${MICROSOFT_CALLBACK_URL:-}" ]; then
-      read -rp "Callback URL: " MICROSOFT_CALLBACK_URL
-    fi
+      if [ -z "${MICROSOFT_CLIENT_ID}" ]; then
+        echo "❌ Application (Client) ID cannot be blank"
+        exit 1
+      fi
 
-    if [ -z "${MICROSOFT_ALLOWED_DOMAINS:-}" ]; then
-      read -rp "Allowed domains (comma separated, blank = unrestricted): " MICROSOFT_ALLOWED_DOMAINS
-    fi
+      if [ -z "${MICROSOFT_CLIENT_SECRET:-}" ]; then
+        read -rsp "Client Secret: " MICROSOFT_CLIENT_SECRET
+        echo ""
 
-    if [ -z "${MICROSOFT_AUTO_CREATE_USERS:-}" ]; then
-      read -rp "Automatically create users? [Y/N] (default Y): " AUTO_REPLY
+        if [ -z "${MICROSOFT_CLIENT_SECRET}" ]; then
+          echo "❌ Client secret cannot be blank"
+          exit 1
+        fi
 
-      case "${AUTO_REPLY:-Y}" in
-        [Yy]*)
-          MICROSOFT_AUTO_CREATE_USERS="true"
-          ;;
-        *)
-          MICROSOFT_AUTO_CREATE_USERS="false"
-          ;;
-      esac
+        echo "✓ Client secret received (${#MICROSOFT_CLIENT_SECRET} characters)"
+      fi
+
+      if [ -z "${MICROSOFT_CALLBACK_URL:-}" ]; then
+        read -rp "Callback URL: " MICROSOFT_CALLBACK_URL
+      fi
+
+      if [ -z "${MICROSOFT_CALLBACK_URL}" ]; then
+        echo "❌ Callback URL cannot be blank"
+        exit 1
+      fi
+
+      if [ -z "${MICROSOFT_ALLOWED_DOMAINS:-}" ]; then
+        read -rp "Allowed domains (comma separated, blank = unrestricted): " MICROSOFT_ALLOWED_DOMAINS
+      fi
+
+      if [ -z "${MICROSOFT_AUTO_CREATE_USERS:-}" ]; then
+        read -rp "Automatically create users? [Y/N] (default Y): " AUTO_REPLY
+
+        case "${AUTO_REPLY:-Y}" in
+          [Yy]*)
+            MICROSOFT_AUTO_CREATE_USERS="true"
+            ;;
+          *)
+            MICROSOFT_AUTO_CREATE_USERS="false"
+            ;;
+        esac
+      fi
     fi
-  fi
 }
 
 
