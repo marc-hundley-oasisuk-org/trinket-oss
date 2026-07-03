@@ -43,6 +43,6 @@ ARG COMMIT_ID
 ARG NODE_ENV
 ENV NODE_ENV=$NODE_ENV
 
-EXPOSE 3000
+EXPOSE 3000 443
 
 CMD ["pm2-docker", "start", "app.js"]

@@ -785,9 +785,5 @@ Do not run plain `docker-compose up -d` unless intentionally using another compo
 
 Planned improvements:
 
-- make the setup script interactive
-- ask whether HTTPS is required
-- ask whether Microsoft sign-in is required
-- prompt for Entra values when Microsoft sign-in is enabled
 - reduce reliance on long environment-variable setup commands
 - improve Microsoft-created display names if required
