@@ -791,4 +791,3 @@ Planned improvements:
 - prompt for Entra values when Microsoft sign-in is enabled
 - reduce reliance on long environment-variable setup commands
 - improve Microsoft-created display names if required
-

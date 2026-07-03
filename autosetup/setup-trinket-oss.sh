@@ -95,6 +95,101 @@ clone_or_update_repo() {
   git remote add upstream "${FALLBACK_REPO}" 2>/dev/null || true
 }
 
+
+prompt_for_configuration() {
+  if [ ! -t 0 ]; then
+    return
+  fi
+
+  if [ -z "${TRINKET_HTTPS_ENABLED:-}" ]; then
+    echo ""
+    read -rp "Enable HTTPS? [Y/N] (default Y): " HTTPS_REPLY
+
+    case "${HTTPS_REPLY:-Y}" in
+      [Yy]*)
+        TRINKET_HTTPS_ENABLED="true"
+        ;;
+      *)
+        TRINKET_HTTPS_ENABLED="false"
+        ;;
+    esac
+  fi
+
+  if [ "${TRINKET_HTTPS_ENABLED}" = "true" ]; then
+    if [ -z "${TRINKET_HOSTNAME:-}" ]; then
+      read -rp "Hostname or IP address: " TRINKET_HOSTNAME
+    fi
+
+    if [ -z "${TRINKET_PORT:-}" ]; then
+      read -rp "HTTPS port (default 443): " TRINKET_PORT
+      TRINKET_PORT="${TRINKET_PORT:-443}"
+    fi
+
+    if [ -z "${TRINKET_HTTPS_CERT_SOURCE:-}" ] && [ -z "${TRINKET_HTTPS_KEY_SOURCE:-}" ]; then
+      read -rp "Use an existing certificate/key? [Y/N] (default N): " CERT_REPLY
+
+      case "${CERT_REPLY:-N}" in
+        [Yy]*)
+          read -rp "Certificate path: " TRINKET_HTTPS_CERT_SOURCE
+          read -rp "Key path: " TRINKET_HTTPS_KEY_SOURCE
+          ;;
+      esac
+    fi
+  fi
+
+  if [ -z "${MICROSOFT_SSO_ENABLED:-}" ]; then
+    echo ""
+    read -rp "Enable Microsoft Entra sign-in? [Y/N] (default N): " MS_REPLY
+
+    case "${MS_REPLY:-N}" in
+      [Yy]*)
+        MICROSOFT_SSO_ENABLED="true"
+        ;;
+      *)
+        MICROSOFT_SSO_ENABLED="false"
+        ;;
+    esac
+  fi
+
+  if [ "${MICROSOFT_SSO_ENABLED}" = "true" ]; then
+    if [ -z "${MICROSOFT_TENANT_ID:-}" ]; then
+      read -rp "Directory (Tenant) ID: " MICROSOFT_TENANT_ID
+    fi
+
+    if [ -z "${MICROSOFT_CLIENT_ID:-}" ]; then
+      read -rp "Application (Client) ID: " MICROSOFT_CLIENT_ID
+    fi
+
+    if [ -z "${MICROSOFT_CLIENT_SECRET:-}" ]; then
+      read -rsp "Client Secret: " MICROSOFT_CLIENT_SECRET
+      echo ""
+    fi
+
+    if [ -z "${MICROSOFT_CALLBACK_URL:-}" ]; then
+      read -rp "Callback URL: " MICROSOFT_CALLBACK_URL
+    fi
+
+    if [ -z "${MICROSOFT_ALLOWED_DOMAINS:-}" ]; then
+      read -rp "Allowed domains (comma separated, blank = unrestricted): " MICROSOFT_ALLOWED_DOMAINS
+    fi
+
+    if [ -z "${MICROSOFT_AUTO_CREATE_USERS:-}" ]; then
+      read -rp "Automatically create users? [Y/N] (default Y): " AUTO_REPLY
+
+      case "${AUTO_REPLY:-Y}" in
+        [Yy]*)
+          MICROSOFT_AUTO_CREATE_USERS="true"
+          ;;
+        *)
+          MICROSOFT_AUTO_CREATE_USERS="false"
+          ;;
+      esac
+    fi
+  fi
+}
+
+
+
 create_local_config() {
   log "Creating minimal local.yaml"
 
@@ -103,9 +198,15 @@ create_local_config() {
   SESSION_SECRET="$(openssl rand -base64 48 | tr -d '\n')"
 
   VM_IP=$(hostname -I | awk '{print $1}')
+  prompt_for_configuration
   TRINKET_PROTOCOL="${TRINKET_PROTOCOL:-http}"
   TRINKET_HOSTNAME="${TRINKET_HOSTNAME:-${VM_IP}}"
-  TRINKET_PORT="${TRINKET_PORT:-3000}"
+
+  if [ "${TRINKET_HTTPS_ENABLED:-false}" = "true" ]; then
+    TRINKET_PORT="${TRINKET_PORT:-443}"
+  else
+    TRINKET_PORT="${TRINKET_PORT:-3000}"
+  fi
 
   TRINKET_HTTPS_ENABLED="${TRINKET_HTTPS_ENABLED:-false}"
   TRINKET_HTTPS_CERT_SOURCE="${TRINKET_HTTPS_CERT_SOURCE:-}"
