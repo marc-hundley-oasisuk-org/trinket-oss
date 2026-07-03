@@ -1,10 +1,10 @@
-# Self-Hosted Ubuntu Deployment with Optional Microsoft Entra SSO
+# Trinket OSS self-hosted deployment with HTTPS and Microsoft Entra SSO
 
-This fork includes a minimal self-hosted deployment path for Trinket OSS on Ubuntu Server using Docker, Docker Compose, MongoDB, and optional Microsoft Entra ID sign-in using OpenID Connect.
+This branch provides a repeatable self-hosted deployment path for Trinket OSS on Ubuntu Server using Docker, Docker Compose, MongoDB, direct HTTPS hosting, and optional Microsoft Entra ID sign-in using OpenID Connect.
 
-## Current status
+## Current tested status
 
-This branch has been tested successfully with:
+This deployment has been tested successfully with:
 
 - Ubuntu Server VM
 - Docker and Docker Compose
@@ -20,28 +20,51 @@ This branch has been tested successfully with:
 - Python Hello World execution
 - persistent MongoDB data after reboot
 - container restart after reboot
+- direct HTTPS hosting on port `3000`
+- direct HTTPS hosting on port `443`
+- Microsoft Entra OpenID Connect sign-in
+- Microsoft-authenticated user provisioning into Trinket
 
-Microsoft Entra SSO is optional and disabled by default.
+Microsoft Entra SSO is optional and disabled by default unless enabled through setup-script environment variables.
 
-## Important HTTPS note for Microsoft Entra SSO
+## Architecture overview
 
-Microsoft Entra app registrations require the redirect URI to be registered exactly.
-
-For local development, Microsoft allows `http://localhost` redirect URIs. For an internal server reached by IP address or hostname, use HTTPS.
-
-Suitable for Microsoft Entra SSO:
-
-```text
-https://trinket.internal.example.org/auth/microsoft/callback
-```
-
-Not suitable for a Web redirect URI unless using localhost:
+The minimal deployment uses:
 
 ```text
-http://172.27.105.81:3000/auth/microsoft/callback
+Browser
+  -> HTTPS directly to Trinket Node/Hapi app
+  -> Trinket app container using host networking
+  -> MongoDB container bound to 127.0.0.1:27017
 ```
 
-The application currently runs on port `3000`. Before enabling Microsoft Entra SSO for non-localhost testing, configure Trinket to be available over HTTPS and ensure the callback URL in `config/local.yaml` exactly matches the redirect URI registered in Microsoft Entra.
+No reverse proxy is required for the tested direct HTTPS model.
+
+## HTTPS behaviour
+
+The Trinket Node/Hapi application can serve HTTPS directly.
+
+The setup script supports:
+
+- generated self-signed certificates for testing
+- provided certificate and key files for production or internal CA use
+- HTTPS on port `3000`
+- HTTPS on port `443`
+
+When using port `443`, the container still runs as the non-root `trinket` user. The Docker image grants the Node binary the capability required to bind to privileged ports:
+
+```text
+cap_net_bind_service
+```
+
+The generated Docker Compose file also grants:
+
+```yaml
+cap_add:
+  - NET_BIND_SERVICE
+```
+
+This avoids running the application as root.
 
 ## Fresh Ubuntu VM deployment
 
@@ -52,10 +75,10 @@ sudo apt-get update
 sudo apt-get install -y git
 ```
 
-Clone this branch explicitly:
+Clone the branch explicitly:
 
 ```bash
-sudo git clone --branch feature/entra-oidc-auth https://github.com/marc-hundley-oasisuk-org/trinket-oss.git /opt/trinket-oss
+sudo git clone --branch feature/direct-https-hosting https://github.com/marc-hundley-oasisuk-org/trinket-oss.git /opt/trinket-oss
 ```
 
 Run the setup script:
@@ -72,75 +95,143 @@ The script will:
 - generate `docker-compose.minimal.yml`
 - build the Trinket app container
 - start MongoDB and Trinket
-- validate that Trinket responds on port `3000`
+- validate that Trinket responds
 
-After completion, test from the VM:
+## Basic HTTP deployment
+
+For a simple HTTP deployment:
 
 ```bash
-curl http://localhost:3000
+cd /opt/trinket-oss
+sudo bash autosetup/setup-trinket-oss.sh
 ```
 
-Test from a browser:
+The generated service will be available at:
 
 ```text
 http://<vm-ip>:3000
 ```
 
-## Setup script configuration options
+Microsoft SSO will be disabled by default.
 
-The setup script supports environment variables for the application URL and Microsoft Entra SSO configuration.
+## Direct HTTPS deployment on port 3000
 
-## Basic HTTP deployment
-
-```bash
-sudo bash autosetup/setup-trinket-oss.sh
-```
-
-This generates Microsoft SSO as disabled:
-
-```yaml
-app:
-  auth:
-    microsoft:
-      enabled: false
-      tenantId: ''
-      clientID: ''
-      clientSecret: ''
-      callbackURL: 'http://<vm-ip>:3000/auth/microsoft/callback'
-      allowedDomains: []
-      autoCreateUsers: true
-```
-
-## HTTPS deployment values
-
-When HTTPS is available, run the setup script with explicit URL values:
+For HTTPS testing on port `3000` using a generated self-signed certificate:
 
 ```bash
-sudo \
-TRINKET_PROTOCOL="https" \
-TRINKET_HOSTNAME="trinket.internal.example.org" \
-TRINKET_PORT="443" \
-bash autosetup/setup-trinket-oss.sh
+cd /opt/trinket-oss
+sudo TRINKET_HTTPS_ENABLED="true" TRINKET_HOSTNAME="<vm-ip-or-hostname>" TRINKET_PORT="3000" bash autosetup/setup-trinket-oss.sh
 ```
 
-If using Microsoft Entra SSO, set the callback URL explicitly to avoid an unwanted `:443` mismatch:
+Test from the VM:
 
 ```bash
-sudo \
-TRINKET_PROTOCOL="https" \
-TRINKET_HOSTNAME="trinket.internal.example.org" \
-TRINKET_PORT="443" \
-MICROSOFT_SSO_ENABLED="true" \
-MICROSOFT_TENANT_ID="<directory-tenant-id>" \
-MICROSOFT_CLIENT_ID="<application-client-id>" \
-MICROSOFT_CLIENT_SECRET="<client-secret-value>" \
-MICROSOFT_CALLBACK_URL="https://trinket.internal.example.org/auth/microsoft/callback" \
-MICROSOFT_ALLOWED_DOMAINS="example.org" \
-MICROSOFT_AUTO_CREATE_USERS="true" \
-bash autosetup/setup-trinket-oss.sh
+curl -k https://localhost:3000
 ```
 
-Do not include real secrets in commits, screenshots, documentation, or issue reports.
+Test from a browser:
+
+```text
+https://<vm-ip-or-hostname>:3000
+```
+
+A browser certificate warning is expected when using the generated self-signed certificate.
+
+## Direct HTTPS deployment on port 443
+
+For HTTPS testing or production-style hosting on port `443`:
+
+```bash
+cd /opt/trinket-oss
+sudo TRINKET_HTTPS_ENABLED="true" TRINKET_HOSTNAME="<vm-ip-or-hostname>" TRINKET_PORT="443" bash autosetup/setup-trinket-oss.sh
+```
+
+Test from the VM:
+
+```bash
+curl -k https://localhost
+```
+
+Test from a browser:
+
+```text
+https://<vm-ip-or-hostname>
+```
+
+Expected container behaviour:
+
+```text
+Server started on port: 443
+```
+
+Verify the Node binary capability inside the container:
+
+```bash
+sudo docker exec -it trinket sh -c 'id && getcap "$(readlink -f "$(which node)")"'
+```
+
+Expected output should include:
+
+```text
+cap_net_bind_service+ep
+```
+
+## Using an internal CA or production certificate
+
+To provide your own certificate and key:
+
+```bash
+cd /opt/trinket-oss
+sudo TRINKET_HTTPS_ENABLED="true" TRINKET_HOSTNAME="trinket.internal.example.org" TRINKET_PORT="443" TRINKET_HTTPS_CERT_SOURCE="/path/to/trinket.crt" TRINKET_HTTPS_KEY_SOURCE="/path/to/trinket.key" bash autosetup/setup-trinket-oss.sh
+```
+
+The setup script copies these into:
+
+```text
+/opt/trinket-oss/certs/trinket.crt
+/opt/trinket-oss/certs/trinket.key
+```
+
+The container mounts them read-only at:
+
+```text
+/usr/local/node/trinket/certs/trinket.crt
+/usr/local/node/trinket/certs/trinket.key
+```
+
+Do not commit certificates, keys, generated `certs/` content, or secrets.
+
+## Microsoft Entra SSO overview
+
+Microsoft Entra SSO is implemented using OpenID Connect Authorization Code Flow.
+
+When enabled, Trinket adds:
+
+```text
+GET /auth/microsoft
+GET /auth/microsoft/callback
+```
+
+The login page displays:
+
+```text
+Sign in with Microsoft
+```
+
+The sign-in flow:
+
+1. Redirects the user to the tenant-specific Microsoft identity endpoint.
+2. Uses OpenID Connect Authorization Code Flow.
+3. Exchanges the returned code for tokens.
+4. Validates the Microsoft ID token.
+5. Validates the tenant ID.
+6. Optionally validates the user's email or UPN domain.
+7. Finds an existing Trinket user by Microsoft profile ID or email.
+8. Auto-creates a Trinket user if enabled.
+9. Stores Microsoft identity information under `profiles.microsoft`.
+10. Logs the user into Trinket using the existing Yar session mechanism.
+
+Local login and signup remain available.
 
 ## Microsoft Entra app registration
 
@@ -148,10 +239,10 @@ Create an app registration in Microsoft Entra:
 
 ```text
 Microsoft Entra admin centre
-→ Identity
-→ Applications
-→ App registrations
-→ New registration
+-> Identity
+-> Applications
+-> App registrations
+-> New registration
 ```
 
 Recommended values:
@@ -170,6 +261,20 @@ Redirect URI:
 https://trinket.internal.example.org/auth/microsoft/callback
 ```
 
+For an IP-based test on port 443:
+
+```text
+https://<vm-ip>/auth/microsoft/callback
+```
+
+For a port 3000 test:
+
+```text
+https://<vm-ip>:3000/auth/microsoft/callback
+```
+
+The redirect URI in Entra must exactly match the `callbackURL` generated in `config/local.yaml`.
+
 After creating the app registration, record:
 
 ```text
@@ -181,31 +286,29 @@ Create a client secret:
 
 ```text
 App registrations
-→ <your app>
-→ Certificates & secrets
-→ Client secrets
-→ New client secret
+-> <your app>
+-> Certificates & secrets
+-> Client secrets
+-> New client secret
 ```
 
-Copy the secret **Value** immediately.
-
-Do not use the Secret ID as the application secret.
+Copy the secret `Value` immediately. Do not use the Secret ID as the application secret.
 
 ## Enterprise application configuration
 
 After the app registration is created, Microsoft Entra will also create an Enterprise Application.
 
-Review the Enterprise Application:
+Review:
 
 ```text
 Microsoft Entra admin centre
-→ Identity
-→ Applications
-→ Enterprise applications
-→ <your app>
+-> Identity
+-> Applications
+-> Enterprise applications
+-> <your app>
 ```
 
-Depending on tenant policy, you may need to configure:
+Depending on tenant policy, configure:
 
 - user assignment
 - admin consent
@@ -216,9 +319,9 @@ If assignment is required:
 
 ```text
 Enterprise applications
-→ <your app>
-→ Users and groups
-→ Add user/group
+-> <your app>
+-> Users and groups
+-> Add user/group
 ```
 
 Add the appropriate users or groups who should be allowed to use Trinket.
@@ -235,36 +338,27 @@ openid profile email
 
 For first testing, avoid adding unnecessary Microsoft Graph delegated permissions.
 
-If users see a **Need admin approval** screen, check:
+If users see a `Need admin approval` screen:
 
 ```text
 App registrations
-→ <your app>
-→ API permissions
+-> <your app>
+-> API permissions
 ```
 
 Recommended first test:
 
 - Remove unnecessary Graph permissions.
-- Avoid adding optional email claims that require extra consent unless needed.
-- If tenant policy still blocks user consent, an administrator must grant admin consent.
+- Avoid adding optional email claims unless needed.
+- If tenant policy blocks user consent, an administrator must grant admin consent.
 
 Admin consent can be granted from:
 
 ```text
 App registrations
-→ <your app>
-→ API permissions
-→ Grant admin consent
-```
-
-Depending on tenant policy, the Enterprise Application may also need assignment:
-
-```text
-Enterprise applications
-→ <your app>
-→ Users and groups
-→ Add user/group
+-> <your app>
+-> API permissions
+-> Grant admin consent
 ```
 
 ## Optional claims
@@ -279,25 +373,51 @@ The current Trinket implementation checks the ID token for:
 
 In most Microsoft 365 work account scenarios, `preferred_username` or `upn` should be sufficient for matching and provisioning users.
 
-If you later require the `email` claim specifically, add it under:
+Only add the `email` optional claim if testing proves that the ID token does not contain a usable email-like identifier.
 
-```text
-App registrations
-→ <your app>
-→ Token configuration
-→ Add optional claim
-→ ID token
-→ email
+## Enabling HTTPS and Microsoft SSO together
+
+Recommended production-style command using HTTPS on port `443`:
+
+```bash
+cd /opt/trinket-oss
+sudo TRINKET_HTTPS_ENABLED="true" TRINKET_HOSTNAME="trinket.internal.example.org" TRINKET_PORT="443" MICROSOFT_SSO_ENABLED="true" MICROSOFT_TENANT_ID="<directory-tenant-id>" MICROSOFT_CLIENT_ID="<application-client-id>" MICROSOFT_CLIENT_SECRET="<client-secret-value>" MICROSOFT_CALLBACK_URL="https://trinket.internal.example.org/auth/microsoft/callback" MICROSOFT_ALLOWED_DOMAINS="example.org" MICROSOFT_AUTO_CREATE_USERS="true" bash autosetup/setup-trinket-oss.sh
 ```
 
-Be aware that enabling some optional claims or related Graph permissions may trigger admin consent requirements in some tenants.
+For an IP-based test:
 
-## Generated local.yaml Microsoft configuration
+```bash
+cd /opt/trinket-oss
+sudo TRINKET_HTTPS_ENABLED="true" TRINKET_HOSTNAME="<vm-ip>" TRINKET_PORT="443" MICROSOFT_SSO_ENABLED="true" MICROSOFT_TENANT_ID="<directory-tenant-id>" MICROSOFT_CLIENT_ID="<application-client-id>" MICROSOFT_CLIENT_SECRET="<client-secret-value>" MICROSOFT_CALLBACK_URL="https://<vm-ip>/auth/microsoft/callback" MICROSOFT_ALLOWED_DOMAINS="example.org" MICROSOFT_AUTO_CREATE_USERS="true" bash autosetup/setup-trinket-oss.sh
+```
 
-Expected enabled configuration:
+Do not include real secrets in commits, screenshots, documentation, or issue reports.
+
+## Generated local.yaml example
+
+Expected HTTPS and Microsoft SSO configuration:
 
 ```yaml
 app:
+  hostname: 0.0.0.0
+  port: 443
+  url:
+    hostname: trinket.internal.example.org
+    port: 443
+    protocol: https
+  basePath: "/"
+
+  https:
+    enabled: true
+    keyPath: '/usr/local/node/trinket/certs/trinket.key'
+    certPath: '/usr/local/node/trinket/certs/trinket.crt'
+
+  plugins:
+    session:
+      cookieOptions:
+        password: '<generated-session-secret>'
+        isSecure: true
+
   auth:
     microsoft:
       enabled: true
@@ -310,7 +430,7 @@ app:
       autoCreateUsers: true
 ```
 
-To allow multiple domains, provide a comma-separated list to the setup script:
+To allow multiple domains:
 
 ```bash
 MICROSOFT_ALLOWED_DOMAINS="example.org,example.com"
@@ -325,40 +445,6 @@ allowedDomains:
 ```
 
 If `allowedDomains` is empty, domain restriction is not enforced.
-
-## Microsoft SSO behaviour
-
-When enabled, Trinket adds:
-
-```text
-GET /auth/microsoft
-GET /auth/microsoft/callback
-```
-
-The login page displays:
-
-```text
-Sign in with Microsoft
-```
-
-The Microsoft sign-in flow:
-
-1. Redirects the user to the tenant-specific Microsoft identity endpoint.
-2. Uses OpenID Connect Authorization Code Flow.
-3. Exchanges the returned code for tokens.
-4. Validates the Microsoft ID token.
-5. Validates the tenant ID.
-6. Optionally validates the user's email or UPN domain.
-7. Finds an existing Trinket user by Microsoft profile ID or email.
-8. Auto-creates a Trinket user if enabled.
-9. Stores Microsoft identity information under `profiles.microsoft`.
-10. Logs the user into Trinket using the existing Yar session mechanism.
-
-## Local login and signup
-
-Local login and signup remain available.
-
-This is intentional during testing so that administrators can still access the platform if Microsoft SSO configuration is incorrect.
 
 ## Regression test checklist
 
@@ -376,7 +462,19 @@ trinket
 mongodb
 ```
 
-Test in browser:
+For HTTPS on port 443:
+
+```bash
+curl -k https://localhost
+```
+
+For HTTPS on port 3000:
+
+```bash
+curl -k https://localhost:3000
+```
+
+Browser tests:
 
 - Home page loads.
 - `/signup` loads.
@@ -415,13 +513,13 @@ Before testing:
 - the Enterprise Application allows the test user or group, if assignment is required.
 - admin consent has been granted, if required by tenant policy.
 
-Run:
+Follow logs:
 
 ```bash
 sudo docker logs -f trinket
 ```
 
-Then browse to:
+Browse to:
 
 ```text
 https://trinket.internal.example.org/login
@@ -496,14 +594,6 @@ These must match exactly, including:
 - path
 - trailing slash behaviour
 
-### Redirect URI must start with HTTPS
-
-For internal hostname or IP-based testing, use HTTPS.
-
-`http://localhost` is treated as a local-development exception.
-
-`http://<server-ip>:3000` is not suitable for the Web redirect URI.
-
 ### Need admin approval
 
 This is usually caused by tenant consent policy or added permissions that require administrator approval.
@@ -512,8 +602,8 @@ Check:
 
 ```text
 App registrations
-→ <your app>
-→ API permissions
+-> <your app>
+-> API permissions
 ```
 
 Remove unnecessary Microsoft Graph permissions for first testing.
@@ -522,30 +612,30 @@ If approval is still required, ask an administrator to grant consent:
 
 ```text
 App registrations
-→ <your app>
-→ API permissions
-→ Grant admin consent
+-> <your app>
+-> API permissions
+-> Grant admin consent
 ```
 
 Also check whether assignment is required:
 
 ```text
 Enterprise applications
-→ <your app>
-→ Properties
-→ Assignment required
+-> <your app>
+-> Properties
+-> Assignment required
 ```
 
 If assignment is required, add the appropriate users or groups:
 
 ```text
 Enterprise applications
-→ <your app>
-→ Users and groups
-→ Add user/group
+-> <your app>
+-> Users and groups
+-> Add user/group
 ```
 
-### Trinket returns "Microsoft sign-in failed"
+### Trinket returns Microsoft sign-in failed
 
 Check logs:
 
@@ -563,6 +653,44 @@ Likely causes:
 - user auto-creation disabled
 - disabled local user account
 
+### HTTPS port 443 does not start
+
+Check logs:
+
+```bash
+sudo docker logs trinket --tail=100
+```
+
+If you see:
+
+```text
+listen EACCES: permission denied 0.0.0.0:443
+```
+
+verify the Node binary capability:
+
+```bash
+sudo docker exec -it trinket sh -c 'id && getcap "$(readlink -f "$(which node)")"'
+```
+
+Expected:
+
+```text
+cap_net_bind_service+ep
+```
+
+Also verify the container capability:
+
+```bash
+sudo docker inspect trinket --format '{{json .HostConfig.CapAdd}}'
+```
+
+Expected:
+
+```text
+["NET_BIND_SERVICE"]
+```
+
 ### Local login stops working
 
 Microsoft SSO should not disable local login.
@@ -573,29 +701,43 @@ Check:
 sudo docker logs trinket --tail=200
 ```
 
-Also confirm the generated session configuration in:
+Also confirm the generated session configuration:
 
 ```bash
 cat /opt/trinket-oss/config/local.yaml
 ```
 
-For HTTP testing, the session cookie should not be secure:
-
-```yaml
-isSecure: false
-```
-
-For HTTPS production use, this should be changed to:
+For HTTPS production use, the session cookie should be secure:
 
 ```yaml
 isSecure: true
 ```
 
-## Current known limitation
+For HTTP-only testing, this should be:
 
-This branch adds optional Microsoft Entra OIDC sign-in and setup-script configuration.
+```yaml
+isSecure: false
+```
 
-Direct HTTPS hosting for the Trinket Node application should be completed before production Entra SSO testing if a reverse proxy is not being used.
+## Generated files and secrets
+
+Do not commit:
+
+- `config/local.yaml`
+- `docker-compose.minimal.yml`
+- `certs/`
+- private keys
+- client secrets
+- session secrets
+
+The following files are generated during deployment:
+
+```text
+/opt/trinket-oss/config/local.yaml
+/opt/trinket-oss/docker-compose.minimal.yml
+/opt/trinket-oss/certs/trinket.crt
+/opt/trinket-oss/certs/trinket.key
+```
 
 ## Useful commands
 
@@ -633,42 +775,20 @@ Rebuild using the minimal compose file:
 
 ```bash
 cd /opt/trinket-oss
-sudo docker compose -f docker-compose.minimal.yml build --no-cache app
-sudo docker compose -f docker-compose.minimal.yml up -d
-```
-
-If using older Docker Compose:
-
-```bash
-cd /opt/trinket-oss
 sudo docker-compose -f docker-compose.minimal.yml build --no-cache app
 sudo docker-compose -f docker-compose.minimal.yml up -d
 ```
 
-Do not run plain `docker-compose up -d` unless intentionally using the upstream compose file.
+Do not run plain `docker-compose up -d` unless intentionally using another compose file.
 
-## References
+## Current known follow-up items
 
-Microsoft identity platform redirect URI guidance:
+Planned improvements:
 
-```text
-https://learn.microsoft.com/en-us/entra/identity-platform/reply-url
-```
+- make the setup script interactive
+- ask whether HTTPS is required
+- ask whether Microsoft sign-in is required
+- prompt for Entra values when Microsoft sign-in is enabled
+- reduce reliance on long environment-variable setup commands
+- improve Microsoft-created display names if required
 
-Microsoft identity platform OpenID Connect guidance:
-
-```text
-https://learn.microsoft.com/en-us/entra/identity-platform/v2-protocols-oidc
-```
-
-Microsoft identity platform authorization code flow guidance:
-
-```text
-https://learn.microsoft.com/en-us/entra/identity-platform/v2-oauth2-auth-code-flow
-```
-
-Microsoft identity platform admin consent guidance:
-
-```text
-https://learn.microsoft.com/en-us/entra/identity-platform/v2-admin-consent
-```
