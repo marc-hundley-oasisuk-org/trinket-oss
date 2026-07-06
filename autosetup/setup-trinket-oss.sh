@@ -298,7 +298,14 @@ prompt_for_configuration() {
 
   if [ "${TRINKET_HTTPS_ENABLED}" = "true" ]; then
     if [ -z "${TRINKET_HOSTNAME:-}" ]; then
-      read -rp "Hostname or IP address: " TRINKET_HOSTNAME
+      DETECTED_HOSTNAME="$(hostname -I | awk '{print $1}')"
+
+      if [ -z "${DETECTED_HOSTNAME}" ]; then
+        read -rp "Hostname or IP address: " TRINKET_HOSTNAME
+      else
+        read -rp "Hostname or IP address (default ${DETECTED_HOSTNAME}): " TRINKET_HOSTNAME
+        TRINKET_HOSTNAME="${TRINKET_HOSTNAME:-${DETECTED_HOSTNAME}}"
+      fi
     fi
 
     if [ -z "${TRINKET_PORT:-}" ]; then
@@ -400,10 +407,18 @@ create_local_config() {
 
   SESSION_SECRET="$(openssl rand -base64 48 | tr -d '\n')"
 
-  VM_IP=$(hostname -I | awk '{print $1}')
+
+  VM_IP="$(hostname -I | awk '{print $1}')"
+
+  if [ -z "${VM_IP}" ]; then
+    die "Unable to auto-detect VM IP address. Set TRINKET_HOSTNAME manually."
+  fi
+
   prompt_for_configuration
   TRINKET_PROTOCOL="${TRINKET_PROTOCOL:-http}"
   TRINKET_HOSTNAME="${TRINKET_HOSTNAME:-${VM_IP}}"
+
+  log "Using Trinket hostname/IP: ${TRINKET_HOSTNAME}"
 
   if [ "${TRINKET_HTTPS_ENABLED:-false}" = "true" ]; then
     TRINKET_PORT="${TRINKET_PORT:-443}"
