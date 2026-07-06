@@ -127,6 +127,31 @@ apt_update_and_upgrade() {
   fi
 }
 
+#install_required_packages() {
+#  log "Installing required OS packages"
+#
+#  REQUIRED_PACKAGES=(
+#    ca-certificates
+#    curl
+#    git
+#    gnupg
+#    openssl
+#    docker.io
+#    docker-compose
+#  )
+
+#  if is_true "${ENABLE_UNATTENDED_UPGRADES}"; then
+#    REQUIRED_PACKAGES+=(unattended-upgrades)
+#  fi
+
+#  if is_true "${ENABLE_UFW}"; then
+#    REQUIRED_PACKAGES+=(ufw)
+#  fi
+
+#  DEBIAN_FRONTEND=noninteractive apt-get install -y \
+#    "${REQUIRED_PACKAGES[@]}"
+#}
+
 install_required_packages() {
   log "Installing required OS packages"
 
@@ -137,7 +162,6 @@ install_required_packages() {
     gnupg
     openssl
     docker.io
-    docker-compose
   )
 
   if is_true "${ENABLE_UNATTENDED_UPGRADES}"; then
@@ -150,6 +174,15 @@ install_required_packages() {
 
   DEBIAN_FRONTEND=noninteractive apt-get install -y \
     "${REQUIRED_PACKAGES[@]}"
+
+  # Prefer Docker Compose v2 plugin where available.
+  if apt-cache show docker-compose-plugin >/dev/null 2>&1; then
+    log "Installing Docker Compose v2 plugin"
+    DEBIAN_FRONTEND=noninteractive apt-get install -y docker-compose-plugin
+  else
+    log "Docker Compose plugin not available, installing legacy docker-compose"
+    DEBIAN_FRONTEND=noninteractive apt-get install -y docker-compose
+  fi
 }
 
 configure_unattended_upgrades() {
