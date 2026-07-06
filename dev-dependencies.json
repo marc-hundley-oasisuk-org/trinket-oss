@@ -1,0 +1,13 @@
+{
+  "chai": "^3.5.0",
+  "chai-as-promised": "^6.0.0",
+  "cheerio": "~0.22.0",
+  "mocha": "^3.4.1",
+  "redis-mock": "~0.2.0",
+  "sass": "^1.57.0",
+  "should": "~3.0.0",
+  "sinon": "~1.7.3",
+  "sinon-chai": "^2.5.0",
+  "supertest": "~0.8.3",
+  "vite": "^4.5.14"
+}

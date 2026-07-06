@@ -1,0 +1,32 @@
+trinket@0.0.0 /workspaces/trinket-oss
+├─┬ archiver@2.1.1
+│ ├─┬ archiver-utils@1.3.0
+│ │ └── lodash@4.17.23 deduped
+│ ├─┬ async@2.6.4
+│ │ └── lodash@4.17.23 deduped
+│ ├── lodash@4.17.23 deduped
+│ └─┬ zip-stream@1.2.0
+│   └── lodash@4.17.23 deduped
+├─┬ bull@0.7.2
+│ └── lodash@3.10.1
+├── is-svg@2.1.0
+├─┬ js-yaml@3.0.2
+│ └─┬ argparse@0.1.16
+│   └── underscore@1.7.0
+├── jsonwebtoken@5.7.0
+├── lodash@4.17.23
+├── marked@0.3.2 (git+ssh://git@github.com/trinketapp/marked.git#55ea82491047d038b4360b78d092f77d439df63f)
+├── mime@1.2.11
+├─┬ nodemailer@2.7.2
+│ └─┬ nodemailer-direct-transport@3.3.2
+│   └─┬ smtp-connection@2.12.0
+│     └─┬ httpntlm@1.6.1
+│       └── underscore@1.7.0
+├── request@2.88.2
+├─┬ supertest@0.8.3
+│ └─┬ superagent@0.16.0
+│   └── mime@1.2.5
+├── tmp@0.0.25
+├── underscore@1.13.8
+└── validator@5.7.0
+

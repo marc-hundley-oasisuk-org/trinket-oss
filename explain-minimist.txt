@@ -1,0 +1,17 @@
+minimist@1.2.8
+node_modules/minimist
+  minimist@"^1.1.1" from the root project
+
+minimist@0.0.8 dev
+node_modules/mocha/node_modules/minimist
+  minimist@"0.0.8" from mkdirp@0.5.1
+  node_modules/mocha/node_modules/mkdirp
+    mkdirp@"0.5.1" from mocha@3.5.3
+    node_modules/mocha
+      dev mocha@"^3.4.1" from the root project
+
+minimist@0.0.10
+node_modules/optimist/node_modules/minimist
+  minimist@"~0.0.1" from optimist@0.6.1
+  node_modules/optimist
+    optimist@"~0.6.0" from the root project
