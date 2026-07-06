@@ -12,6 +12,12 @@ FALLBACK_REPO="https://github.com/trinketapp/trinket-oss.git"
 
 COMPOSE_FILE="${INSTALL_DIR}/docker-compose.minimal.yml"
 
+# Platform hardening defaults.
+# These can be supplied as environment variables for non-interactive builds.
+RUN_APT_UPGRADE="${RUN_APT_UPGRADE:-}"
+ENABLE_UNATTENDED_UPGRADES="${ENABLE_UNATTENDED_UPGRADES:-}"
+ENABLE_UFW="${ENABLE_UFW:-}"
+
 # For your own fork, run:
 # sudo TRINKET_REPO="https://github.com/marc-hundley-oasisuk-org/trinket-oss.git" ./setup-trinket-oss.sh
 
@@ -23,6 +29,17 @@ log() {
 die() {
   echo "ERROR: $*" >&2
   exit 1
+}
+
+is_true() {
+  case "${1:-}" in
+    true|TRUE|yes|YES|y|Y|1)
+      return 0
+      ;;
+    *)
+      return 1
+      ;;
+  esac
 }
 
 need_root() {
@@ -43,23 +60,154 @@ detect_compose() {
   echo "Using Compose command: ${COMPOSE_CMD}"
 }
 
+prompt_for_platform_hardening() {
+  if [ ! -t 0 ]; then
+    RUN_APT_UPGRADE="${RUN_APT_UPGRADE:-false}"
+    ENABLE_UNATTENDED_UPGRADES="${ENABLE_UNATTENDED_UPGRADES:-false}"
+    ENABLE_UFW="${ENABLE_UFW:-false}"
+    return
+  fi
+
+  if [ -z "${RUN_APT_UPGRADE:-}" ]; then
+    echo ""
+    read -rp "Run apt-get upgrade before installing Trinket? [Y/N] (default Y): " APT_UPGRADE_REPLY
+
+    case "${APT_UPGRADE_REPLY:-Y}" in
+      [Yy]*)
+        RUN_APT_UPGRADE="true"
+        ;;
+      *)
+        RUN_APT_UPGRADE="false"
+        ;;
+    esac
+  fi
+
+  if [ -z "${ENABLE_UNATTENDED_UPGRADES:-}" ]; then
+    echo ""
+    read -rp "Enable unattended security updates? [Y/N] (default Y): " UNATTENDED_REPLY
+
+    case "${UNATTENDED_REPLY:-Y}" in
+      [Yy]*)
+        ENABLE_UNATTENDED_UPGRADES="true"
+        ;;
+      *)
+        ENABLE_UNATTENDED_UPGRADES="false"
+        ;;
+    esac
+  fi
+
+  if [ -z "${ENABLE_UFW:-}" ]; then
+    echo ""
+    read -rp "Enable basic UFW firewall hardening? [Y/N] (default N): " UFW_REPLY
+
+    case "${UFW_REPLY:-N}" in
+      [Yy]*)
+        ENABLE_UFW="true"
+        ;;
+      *)
+        ENABLE_UFW="false"
+        ;;
+    esac
+  fi
+}
+
+apt_update_and_upgrade() {
+  log "Updating apt package lists"
+
+  apt-get update
+
+  if is_true "${RUN_APT_UPGRADE}"; then
+    log "Running safe apt package upgrade"
+
+    DEBIAN_FRONTEND=noninteractive apt-get upgrade -y \
+      -o Dpkg::Options::="--force-confdef" \
+      -o Dpkg::Options::="--force-confold"
+  else
+    log "Skipping apt package upgrade"
+  fi
+}
+
+install_required_packages() {
+  log "Installing required OS packages"
+
+  REQUIRED_PACKAGES=(
+    ca-certificates
+    curl
+    git
+    gnupg
+    openssl
+    docker.io
+    docker-compose
+  )
+
+  if is_true "${ENABLE_UNATTENDED_UPGRADES}"; then
+    REQUIRED_PACKAGES+=(unattended-upgrades)
+  fi
+
+  if is_true "${ENABLE_UFW}"; then
+    REQUIRED_PACKAGES+=(ufw)
+  fi
+
+  DEBIAN_FRONTEND=noninteractive apt-get install -y \
+    "${REQUIRED_PACKAGES[@]}"
+}
+
+configure_unattended_upgrades() {
+  if ! is_true "${ENABLE_UNATTENDED_UPGRADES}"; then
+    log "Unattended security updates not enabled"
+    return
+  fi
+
+  log "Enabling unattended security updates"
+
+  cat > /etc/apt/apt.conf.d/20auto-upgrades <<'EOF'
+APT::Periodic::Update-Package-Lists "1";
+APT::Periodic::Unattended-Upgrade "1";
+EOF
+}
+
+configure_ufw() {
+  if ! is_true "${ENABLE_UFW}"; then
+    log "UFW firewall hardening not enabled"
+    return
+  fi
+
+  log "Configuring UFW firewall"
+
+  ufw default deny incoming
+  ufw default allow outgoing
+
+  # Allow remote administration before enabling the firewall.
+  ufw allow 22/tcp
+
+  # Allow the production Trinket HTTPS endpoint.
+  ufw allow 443/tcp
+
+  ufw --force enable
+  ufw status verbose
+}
+
 install_docker() {
   log "Installing Docker and Docker Compose if required"
 
-  apt-get update -y
-
-  DEBIAN_FRONTEND=noninteractive apt-get install -y \
-    docker.io \
-    docker-compose \
-    git \
-    curl \
-    openssl
+  prompt_for_platform_hardening
+  apt_update_and_upgrade
+  install_required_packages
+  configure_unattended_upgrades
+  configure_ufw
 
   systemctl enable docker
   systemctl start docker
 
   docker --version
   detect_compose
+}
+
+cleanup_apt() {
+  log "Cleaning up apt packages"
+
+  apt-get autoremove -y
+  apt-get autoclean -y
 }
 
 
@@ -535,6 +683,7 @@ main() {
   clean_previous_stacks
   build_and_start
   validate_runtime
+  cleanup_apt
   print_summary
 }
 
