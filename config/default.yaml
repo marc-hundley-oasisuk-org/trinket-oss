@@ -173,7 +173,7 @@ app:
       - '//cdnjs.cloudflare.com/ajax/libs/angular-foundation/0.8.0/mm-foundation-tpls.min.js'
       - '/partials/directives/trinket-calendar.js'
       - '/components/angular-notifyjs.js'
-      - '//cdnjs.cloudflare.com/ajax/libs/jsdiff/5.2.2/diff.min.js'
+      - '//cdn.jsdelivr.net/npm/diff@5.2.2/dist/diff.min.js'
       - '//cdnjs.cloudflare.com/ajax/libs/angular-ui-ace/0.2.3/ui-ace.min.js'
       - '/js/services/config.js'
       - '/js/trinket-markdown.js'
