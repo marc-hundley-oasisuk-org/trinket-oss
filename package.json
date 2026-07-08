@@ -24,7 +24,7 @@
     "config": "~0.4.35",
     "csv": "~1.2.1",
     "debug": "^4.3.0",
-    "diff": "~1.0.8",
+    "diff": "5.2.2",
     "escape-string-regexp": "~1.0.5",
     "file-type": "^3.8.0",
     "highlight.js": "^9.6.0",

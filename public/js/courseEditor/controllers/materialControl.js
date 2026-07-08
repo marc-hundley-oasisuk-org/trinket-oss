@@ -318,7 +318,8 @@
     self.$scope.saved  = self.$scope.saveError = false;
     self.$scope.customError = '';
 
-    var patch = JsDiff.createPatch(self.$scope.material.id, oldContent, newContent);
+    var diffUtil = window.JsDiff || window.Diff;
+    var patch = diffUtil.createPatch(self.$scope.material.id, oldContent, newContent);
     // remove the header
     patch = patch.substr(patch.indexOf('@'));
 
