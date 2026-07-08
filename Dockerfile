@@ -1,5 +1,5 @@
-# Use Node 16 LTS (compatible with updated packages)
-FROM node:16-bullseye
+# Use Node 22 LTS on Debian Bookworm
+FROM node:22-bookworm
 
 SHELL ["/bin/bash", "-c"]
 
