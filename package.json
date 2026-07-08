@@ -22,7 +22,7 @@
     "bull": "^0.7.0",
     "chokidar": "^3.5.3",
     "config": "~0.4.35",
-    "csv": "~1.2.1",
+    "csv-parse": "^4.16.3",
     "debug": "^4.3.0",
     "diff": "5.2.2",
     "escape-string-regexp": "~1.0.5",
