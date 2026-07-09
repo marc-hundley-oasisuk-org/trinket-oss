@@ -3,13 +3,18 @@ FROM node:22-bookworm
 
 SHELL ["/bin/bash", "-c"]
 
+ENV NO_UPDATE_NOTIFIER=true
+
 # Install build dependencies
+ENV DEBIAN_FRONTEND=noninteractive
+
 RUN apt-get update \
-    && apt-get install -y python3 build-essential libcap2-bin\
-    && apt-get -y autoclean
+    && apt-get install -y --no-install-recommends python3 build-essential libcap2-bin \
+    && rm -rf /var/lib/apt/lists/*
+
 
 # Install global tools
-RUN npm install -g pm2@5
+RUN npm install -g pm2@5 --no-audit --no-fund
 
 RUN groupadd -r trinket && \
     useradd -r -g trinket -m -c "trinket user" trinket
@@ -28,11 +33,12 @@ WORKDIR /usr/local/node/trinket
 # Download frontend components from GitHub release
 RUN curl -L --silent -o ./public-components.tgz \
     https://github.com/trinketapp/trinket-oss/releases/download/v1.1.0/public-components.tgz \
-    && tar xzf public-components.tgz \
+    && tar --warning=no-unknown-keyword -xzf public-components.tgz \
     && rm public-components.tgz
 
+
 # Build CSS elements to ensure correct rendering on modern browsers 
-RUN npm install --legacy-peer-deps \
+RUN npm install --legacy-peer-deps --no-audit --no-fund \
  && npm run build:css
 
 # Adjust pathing to account for build inconsistencies when launching new trinkets
