@@ -28,7 +28,7 @@ function connect() {
       connectStr += '?' + dbconfig.mongoread.opts;
     }
   }
-
+  mongoose.set('strictQuery', true);
   mongoose.connect(connectStr);
 }
 

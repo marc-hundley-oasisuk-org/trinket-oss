@@ -290,7 +290,7 @@
         output = '<iframe class="embedded-trinket" src="' + url + '"' + attrStr + ' frameborder="0" marginwidth="0" marginheight="0" allowfullscreen></iframe>';
       }
       else if (hljs && hljs.getLanguage(lang)) {
-        output = '<pre><code class="hljs">' + hljs.highlight(lang, code).value + '</code></pre>';
+        output = '<pre><code class="hljs">' + hljs.highlight(code, { language: lang }).value + '</code></pre>';
       }
       else {
         output = originalCode.call(this, code, lang, escaped);

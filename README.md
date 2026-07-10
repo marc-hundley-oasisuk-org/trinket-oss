@@ -787,3 +787,9 @@ Planned improvements:
 
 - reduce reliance on long environment-variable setup commands
 - improve Microsoft-created display names if required
+
+
+# Promote an existing user to administrator
+
+sudo docker-compose -f docker-compose.minimal.yml exec app \
+npm run make-admin <email-address>

@@ -1065,7 +1065,9 @@ window.TrinketAPI = {
     if (previous) {
       previous.attempt += 1;
 
-      patch = window.JsDiff.createPatch(
+      var diffUtil = window.JsDiff || window.Diff;
+
+      patch = diffUtil.createPatch(
         "attempt" + previous.attempt
         , previous.code
         , code
