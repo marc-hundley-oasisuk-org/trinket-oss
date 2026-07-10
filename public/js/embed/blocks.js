@@ -426,7 +426,7 @@ window.TrinketAPI = {
         highlighted = stripSourceMap(highlighted);
       } else {
         highlighted = stripSourceMap(highlighted);
-        highlighted = hljs.highlight('python', highlighted).value;
+        highlighted = hljs.highlight(highlighted, { language: 'python' }).value;
       }
 
       $('#blocklyPythonCode').html('<pre><code class="hljs">' + highlighted + '</code></pre>');

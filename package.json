@@ -27,7 +27,7 @@
     "diff": "5.2.2",
     "escape-string-regexp": "~1.0.5",
     "file-type": "^3.8.0",
-    "highlight.js": "^9.6.0",
+    "highlight.js": "^11.11.1",
     "is-svg": "^2.1.0",
     "joi": "^17.13.4",
     "js-yaml": "^3.15.0",
