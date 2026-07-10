@@ -543,7 +543,7 @@ window.TrinketAPI = {
   },
   toggleHelp : function() {
     if ($('#glowscriptExample').hasClass("hide")) {
-      var highlighted = hljs.highlight('python', $('#glowscriptExample').text()).value;
+      var highlighted = hljs.highlight($('#glowscriptExample').text(), { language: 'python' }).value;
       $('#glowscriptExample').replaceWith("<code class='hljs'>" + highlighted + "</code>");
     }
     api.toggleOverlay('#help');
