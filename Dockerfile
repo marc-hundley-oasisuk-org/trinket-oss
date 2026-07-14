@@ -32,7 +32,7 @@ WORKDIR /usr/local/node/trinket
 
 # Download frontend components from GitHub release
 RUN curl -L --silent -o ./public-components.tgz \
-    https://github.com/trinketapp/trinket-oss/releases/download/v1.1.0/public-components.tgz \
+    https://github.com/marc-hundley-oasisuk-org/trinket-oss/releases/download/public-components-baseline/public-components.tgz \
     && tar --warning=no-unknown-keyword -xzf public-components.tgz \
     && rm public-components.tgz
 
