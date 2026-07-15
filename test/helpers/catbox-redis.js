@@ -1,4 +1,4 @@
-var catbox = require('catbox-redis'),
+var catbox = require('@hapi/catbox-redis').Engine,
     sinon  = require('sinon'),
     cache  = {};
     expires = {};
